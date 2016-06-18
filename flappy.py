@@ -302,6 +302,11 @@ def mainGame(movementInfo):
 
         pygame.display.update()
         FPSCLOCK.tick(FPS)
+        
+        #screenshot
+        if not os.path.exists("img"):
+            os.makedirs("img")
+        pygame.image.save(SCREEN, "img/screenshot_"+str(datetime.datetime.now())+".jpg")
 
 
 def showGameOverScreen(crashInfo):
