@@ -8,12 +8,12 @@ class flappydqn:
   # parameters
   ACTION = 2
   FRAME_PER_ACTION = 1
-  GAMMA = 0.99 # decay rate of past observations
-  OBSERVE = 200 # timesteps to observe before training
-  EXPLORE = 100000 # frames over which to anneal epsilon
-  FINAL_EPSILON = 0.0 # final value of epsilon
-  INITIAL_EPSILON = 0.97 # starting value of epsilon
-  REPLAY_MEMORY = 5000 # number of previous transitions to remember
+  GAMMA = 0.9 # decay rate of past observations
+  OBSERVE = 10000 # timesteps to observe before training
+  EXPLORE = 3000000 # frames over which to anneal epsilon
+  FINAL_EPSILON = 0.0001 # final value of epsilon
+  INITIAL_EPSILON = 0.1 # starting value of epsilon
+  REPLAY_MEMORY = 80000 # number of previous transitions to remember
   BATCH_SIZE = 32 # size of minibatch
 
   def __init__(self):
@@ -100,11 +100,11 @@ class flappydqn:
     })
 
     # save network every 10000 iteration
-    if self.timeStep % 1000 == 0:
+    if self.timeStep % 10000 == 0:
       self.saver.save(self.session, 'models/' + 'network' + '-dqn', global_step = self.timeStep)
 
   def setPerception(self,nextObservation,action,reward,terminal):
-    newState = np.append(nextObservation,self.currentState[:,:,1:],axis = 2)
+    newState = np.append(self.currentState[:,:,1:],nextObservation,axis = 2)
     self.replayMemory.append((self.currentState,action,reward,newState,terminal))
     if len(self.replayMemory) > self.REPLAY_MEMORY:
       self.replayMemory.popleft()
@@ -122,7 +122,7 @@ class flappydqn:
     if self.timeStep % self.FRAME_PER_ACTION == 0:
       r = random.random()
       if r <= self.epsilon:
-        action_index = random.random() > 0.97
+        action_index = random.random() > 0.5
         action[action_index] = 1
       else:
         print QValue

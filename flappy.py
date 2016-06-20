@@ -1,4 +1,3 @@
-from pykeyboard import PyKeyboard
 from itertools import cycle
 import random
 import sys
@@ -8,7 +7,6 @@ from dqn import flappydqn
 import pygame
 from pygame.locals import *
 
-k = PyKeyboard()
 ai = flappydqn()
 
 TRAIN_MODE = False
@@ -268,12 +266,13 @@ def mainGame(movementInfo):
                     playerFlapped = True
                     SOUNDS['wing'].play()
 
+
         # check for crash here
         crashTest = checkCrash({'x': playerx, 'y': playery, 'index': playerIndex},
                                upperPipes, lowerPipes)
         if crashTest[0]:
             # death~
-            ai.setPerception(obs.reshape((80,80,1)),action,-1000,True)
+            ai.setPerception(obs.reshape((80,80,1)),action,-10,True)
             return {
                 'y': playery,
                 'groundCrash': crashTest[1],
@@ -286,7 +285,9 @@ def mainGame(movementInfo):
         else:
             reward = 1
             if reward_add:
-                reward = 1000
+                reward = 10
+            if playery < 0:
+                reward = -1
             reward_add = False
             ai.setPerception(obs.reshape((80,80,1)),action,reward,False)
 
