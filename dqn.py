@@ -8,12 +8,12 @@ class flappydqn:
   # parameters
   ACTION = 2
   FRAME_PER_ACTION = 1
-  GAMMA = 0.9 # decay rate of past observations
+  GAMMA = 0.99 # decay rate of past observations
   OBSERVE = 10000 # timesteps to observe before training
-  EXPLORE = 3000000 # frames over which to anneal epsilon
+  EXPLORE = 300000 # frames over which to anneal epsilon
   FINAL_EPSILON = 0.0001 # final value of epsilon
   INITIAL_EPSILON = 0.1 # starting value of epsilon
-  REPLAY_MEMORY = 80000 # number of previous transitions to remember
+  REPLAY_MEMORY = 50000 # number of previous transitions to remember
   BATCH_SIZE = 32 # size of minibatch
 
   def __init__(self):
@@ -35,10 +35,10 @@ class flappydqn:
     W_conv3 = self.weight_variable([3,3,64,64])
     b_conv3 = self.bias_variable([64])
 
-    W_fc1 = self.weight_variable([5*5*64,512])
-    b_fc1 = self.bias_variable([512])
+    W_fc1 = self.weight_variable([256,256])
+    b_fc1 = self.bias_variable([256])
 
-    W_fc2 = self.weight_variable([512,self.ACTION])
+    W_fc2 = self.weight_variable([256,self.ACTION])
     b_fc2 = self.bias_variable([self.ACTION])
 
     # input layers
@@ -49,10 +49,12 @@ class flappydqn:
     h_pool1 = self.max_pool_2x2(h_conv1)
 
     h_conv2 = tf.nn.relu(self.conv2d(h_pool1,W_conv2,2) + b_conv2)
+    h_pool2 = self.max_pool_2x2(h_conv2)
 
-    h_conv3 = tf.nn.relu(self.conv2d(h_conv2,W_conv3,1) + b_conv3)
+    h_conv3 = tf.nn.relu(self.conv2d(h_pool2,W_conv3,1) + b_conv3)
+    h_pool3 = self.max_pool_2x2(h_conv3)
 
-    h_conv3_flat = tf.reshape(h_conv3,[-1,5*5*64])
+    h_conv3_flat = tf.reshape(h_pool3,[-1,256])
     h_fc1 = tf.nn.relu(tf.matmul(h_conv3_flat,W_fc1) + b_fc1)
 
     # Q Value layer
@@ -125,15 +127,13 @@ class flappydqn:
         action_index = random.random() > 0.5
         action[action_index] = 1
       else:
-        print QValue
+        print QValue,
         action_index = np.argmax(QValue)
         action[action_index] = 1
     else:
       action[0] = 1 # do nothing
 
     # change episilon
-    if self.timeStep % 200 == 0:
-      print "epsilon:", self.epsilon
     if self.epsilon > self.FINAL_EPSILON and self.timeStep > self.OBSERVE:
       self.epsilon -= (self.INITIAL_EPSILON - self.FINAL_EPSILON)/self.EXPLORE
 

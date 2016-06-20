@@ -235,6 +235,7 @@ def mainGame(movementInfo):
 
     initstate = True
     reward_add = False
+    flip_penalty = 0
     while True:
         # -- handle dqn
         scrshot = pygame.Surface.copy(SCREEN)
@@ -252,6 +253,7 @@ def mainGame(movementInfo):
 
 
         if TRAIN_MODE and action[1]:
+            flip_penalty = flip_penalty + 4
             if playery > -2 * IMAGES['player'][0].get_height():
                 playerVelY = playerFlapAcc
                 playerFlapped = True
@@ -261,17 +263,21 @@ def mainGame(movementInfo):
                 pygame.quit()
                 sys.exit()
             if not TRAIN_MODE and event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
+                action = [0,1]
                 if playery > -2 * IMAGES['player'][0].get_height():
                     playerVelY = playerFlapAcc
                     playerFlapped = True
                     SOUNDS['wing'].play()
 
+        if flip_penalty > 0:
+            flip_penalty = flip_penalty - 1
 
         # check for crash here
         crashTest = checkCrash({'x': playerx, 'y': playery, 'index': playerIndex},
                                upperPipes, lowerPipes)
         if crashTest[0]:
             # death~
+            print -10
             ai.setPerception(obs.reshape((80,80,1)),action,-10,True)
             return {
                 'y': playery,
@@ -283,12 +289,15 @@ def mainGame(movementInfo):
                 'playerVelY': playerVelY,
             }
         else:
-            reward = 1
+            reward = 0.1
             if reward_add:
-                reward = 10
+                reward = 20
             if playery < 0:
-                reward = -1
+                reward = -3
+            if flip_penalty > 4:
+                reward = reward -1
             reward_add = False
+            print reward
             ai.setPerception(obs.reshape((80,80,1)),action,reward,False)
 
         # check for score
