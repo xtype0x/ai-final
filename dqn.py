@@ -10,7 +10,7 @@ class flappydqn:
   FRAME_PER_ACTION = 1
   GAMMA = 0.9 # decay rate of past observations
   OBSERVE = 10000 # timesteps to observe before training
-  EXPLORE = 3000000 # frames over which to anneal epsilon
+  EXPLORE = 300000 # frames over which to anneal epsilon
   FINAL_EPSILON = 0.0001 # final value of epsilon
   INITIAL_EPSILON = 0.1 # starting value of epsilon
   REPLAY_MEMORY = 80000 # number of previous transitions to remember
@@ -125,15 +125,13 @@ class flappydqn:
         action_index = random.random() > 0.5
         action[action_index] = 1
       else:
-        print QValue
+        print QValue,
         action_index = np.argmax(QValue)
         action[action_index] = 1
     else:
       action[0] = 1 # do nothing
 
     # change episilon
-    if self.timeStep % 200 == 0:
-      print "epsilon:", self.epsilon
     if self.epsilon > self.FINAL_EPSILON and self.timeStep > self.OBSERVE:
       self.epsilon -= (self.INITIAL_EPSILON - self.FINAL_EPSILON)/self.EXPLORE
 
