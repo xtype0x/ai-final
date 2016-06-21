@@ -1,13 +1,18 @@
-from pykeyboard import PyKeyboard
 from itertools import cycle
 import random
 import sys
 import numpy as np
+from dqn import flappydqn
 
 import pygame
 from pygame.locals import *
 
-k = PyKeyboard()
+ai = flappydqn()
+
+TRAIN_MODE = False
+if len(sys.argv) > 1 and sys.argv[1] == "--train":
+    print "training model"
+    TRAIN_MODE = True
 
 FPS = 30
 SCREENWIDTH  = 288
@@ -155,11 +160,19 @@ def showWelcomeAnimation():
     playerShmVals = {'val': 0, 'dir': 1}
 
     while True:
+        if TRAIN_MODE:
+            SOUNDS['wing'].play()
+            return {
+                'playery': playery + playerShmVals['val'],
+                'basex': basex,
+                'playerIndexGen': playerIndexGen,
+            }
+
         for event in pygame.event.get():
             if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                 pygame.quit()
                 sys.exit()
-            if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
+            if not TRAIN_MODE and event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
                 # make first flap sound and return values for mainGame
                 SOUNDS['wing'].play()
                 return {
@@ -220,26 +233,52 @@ def mainGame(movementInfo):
     playerFlapAcc =  -9   # players speed on flapping
     playerFlapped = False # True when player flaps
 
-
+    initstate = True
+    reward_add = False
+    flip_penalty = 0
     while True:
-        ar = pygame.surfarray.pixels3d(SCREEN)
-        del ar
-        if playery > 300:
-            k.tap_key(k.space)
+        # -- handle dqn
+        scrshot = pygame.Surface.copy(SCREEN)
+        ar = pygame.transform.scale(scrshot, (80, 80))
+        obs = (pygame.surfarray.pixels_red(ar) * 0.299 + 
+            pygame.surfarray.pixels_green(ar) * 0.587 + 
+            pygame.surfarray.pixels_blue(ar) * 0.114).astype(int)
+        del ar, scrshot
+
+        if initstate:
+            ai.setInitState(obs)
+            initstate = False
+
+        action = ai.getAction()
+
+
+        if TRAIN_MODE and action[1]:
+            flip_penalty = flip_penalty + 4
+            if playery > -2 * IMAGES['player'][0].get_height():
+                playerVelY = playerFlapAcc
+                playerFlapped = True
+                SOUNDS['wing'].play()
         for event in pygame.event.get():
             if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                 pygame.quit()
                 sys.exit()
-            if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
+            if not TRAIN_MODE and event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
+                action = [0,1]
                 if playery > -2 * IMAGES['player'][0].get_height():
                     playerVelY = playerFlapAcc
                     playerFlapped = True
                     SOUNDS['wing'].play()
 
+        if flip_penalty > 0:
+            flip_penalty = flip_penalty - 1
+
         # check for crash here
         crashTest = checkCrash({'x': playerx, 'y': playery, 'index': playerIndex},
                                upperPipes, lowerPipes)
         if crashTest[0]:
+            # death~
+            print -10
+            ai.setPerception(obs.reshape((80,80,1)),action,-10,True)
             return {
                 'y': playery,
                 'groundCrash': crashTest[1],
@@ -249,6 +288,17 @@ def mainGame(movementInfo):
                 'score': score,
                 'playerVelY': playerVelY,
             }
+        else:
+            reward = 0.1
+            if reward_add:
+                reward = 20
+            if playery < 0:
+                reward = -3
+            if flip_penalty > 4:
+                reward = reward -1
+            reward_add = False
+            print reward
+            ai.setPerception(obs.reshape((80,80,1)),action,reward,False)
 
         # check for score
         playerMidPos = playerx + IMAGES['player'][0].get_width() / 2
@@ -256,6 +306,7 @@ def mainGame(movementInfo):
             pipeMidPos = pipe['x'] + IMAGES['pipe'][0].get_width() / 2
             if pipeMidPos <= playerMidPos < pipeMidPos + 4:
                 score += 1
+                reward_add = True
                 SOUNDS['point'].play()
 
         # playerIndex basex change
@@ -327,9 +378,12 @@ def showGameOverScreen(crashInfo):
             if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                 pygame.quit()
                 sys.exit()
-            if event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
+            if not TRAIN_MODE and event.type == KEYDOWN and (event.key == K_SPACE or event.key == K_UP):
                 if playery + playerHeight >= BASEY - 1:
                     return
+        if TRAIN_MODE:
+            if playery + playerHeight >= BASEY - 1:
+                return
 
         # player y shift
         if playery + playerHeight < BASEY - 1:
